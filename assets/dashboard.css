@@ -100,3 +100,13 @@ body {
     border-color: #ffffff;
     box-shadow: 2px 0 8px 0 rgba(0, 0, 0, 0.15);
 }
+/* 
+.nav-item.active
+{
+    font-weight: 600;
+    background-color: #054682;
+}
+.nav-item.active>a
+{
+    color: #ffffff !important;
+} */

@@ -1,4 +1,6 @@
+import dash
 import dash_html_components as html
+from dash.dependencies import Input, Output
 
 def Navbar(title, rpDate, app):
     return html.Nav([
@@ -18,9 +20,15 @@ def Navbar(title, rpDate, app):
         html.Div([
             html.Ul([
                 html.Li([
-                    html.A("Nacional", href="#", className = "nav-link")
+                    html.A("Nacional", href="#", className = "nav-link active", id="nav-link-1")
                 ], className='nav-item active'),
-            ], className='navbar-nav mr-auto'),
+                html.Li([
+                    html.A("Lima", href="#", className = "nav-link", id="nav-link-2")
+                ], className='nav-item'),
+                html.Li([
+                    html.A("Provincias", href="#", className = "nav-link", id="nav-link-3")
+                ], className='nav-item'),
+            ], className='nav nav-pills mr-auto'),
            html.Ul([
                html.Li([
                    html.Div([
@@ -31,3 +39,5 @@ def Navbar(title, rpDate, app):
            ], className="navbar-nav")
         ], id="navbarText", className='collapse navbar-collapse'),
     ], className='navbar navbar-expand-lg navbar-light navbar-inverse fixed-top')
+
+    

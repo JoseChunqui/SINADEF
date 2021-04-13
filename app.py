@@ -3,6 +3,7 @@ import dash_core_components as dcc
 import dash_html_components as html
 import plotly.express as px
 import plotly.graph_objects as go
+from dash.dependencies import Input, Output
 import datetime
 import locale
 import os
@@ -38,11 +39,80 @@ server = app.server
 
 stYears = [2017,2018,2019];
 
+#indicators
+rpDate = ''
+exdat_text = ''
+exdef = ''
+exdef_percent = ''
+
 def serve_layout():
 
-    data_file = os.path.join(os.path.dirname(__file__), 'data/sinadef.csv')
+    graph_bar_title = html.Div(html.Span("Mortalidad por todas las causas. Perú"), className="col-8")
+
+    dash_sinadef_graph = html.Div(
+        html.Div([
+
+            html.Div(graph_bar_title, className="chart-title"),
+            dcc.Graph(
+                id='sinadef_graph',
+                config={
+                    'displayModeBar': False,
+                }
+            ),
+
+            ] ,className="card-body", id="my-div"),
+        className="card my-1",
+    )
+
+    navbar = Navbar("SINADEF", rpDate, app)
+    indicators = Indicators(exdat_text, exdef, exdef_percent)
+    return html.Div([
+        navbar,
+        # indicators,
+        dash_sinadef_graph,
+    ], className='content', id="ServeLayout")
+
+app.title = 'SINADEF'
+app.layout = serve_layout
+
+
+
+
+@app.callback(
+    Output('sinadef_graph', 'figure'),
+    Input("nav-link-1", "n_clicks"),
+    Input("nav-link-2", "n_clicks"),
+    Input("nav-link-3", "n_clicks")
+)
+def update_figure(nl1,nl2,nl3):
+    ctx = dash.callback_context
+
+    if not ctx.triggered:
+        button_id = 'No clicks yet'
+    else:
+        button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    print(button_id)
+
+    global rpDate
+    global exdat_text
+    global exdef
+    global exdef_percent
+
+    data_file = os.path.join(os.path.dirname('__file__'), 'data/sinadef.csv')
     df = pandas.read_csv(data_file)
     df = df[df['IDX'] != 229].reset_index(drop=True)
+
+    if(button_id == 'nav-link-1' or button_id == 'No clicks yet'):
+        df = df.groupby(['NFECHA', 'IDX', 'TheYear', 'TheDate']).agg({'CANT': "sum"}).reset_index().replace({'CANT':{0: np.nan}}).sort_values('TheDate', ascending=True)
+
+    if( button_id == 'nav-link-2' ):
+        df = df[(df['DEPARTAMENTO'] == 'LIMA') | (df['DEPARTAMENTO'].isnull())].sort_values('TheDate', ascending=True)
+
+    if( button_id == 'nav-link-3' ):
+        df = df[(df['DEPARTAMENTO'] != 'LIMA') | (df['DEPARTAMENTO'].isnull())]
+        df = df.groupby(['NFECHA', 'IDX', 'TheYear', 'TheDate']).agg({'CANT': "sum"}).reset_index().replace({'CANT':{0: np.nan}}).sort_values('TheDate', ascending=True)
+
     df['moving'] = df['CANT'].transform(lambda x: x.rolling(7, 7).mean())
     df.moving.fillna(df['CANT'], inplace=True)
     df["fecha"] = df["NFECHA"].astype(str) + df['TheYear'].apply(lambda x: ' ' + str(x % 100))
@@ -168,34 +238,28 @@ def serve_layout():
     )
     fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='rgba(238,238,238,1)')
     fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(238,238,238,1)')
+    return fig
 
-    graph_bar_title = html.Div(html.Span("Mortalidad por todas las causas. Perú"), className="col-8")
+@app.callback(
+    [Output(f"nav-link-{i}", "className") for i in range(1, 4)],
+    [Input(f"nav-link-{i}", "n_clicks") for i in range(1, 4)],
+)
+def set_active(*args):
+    ctx = dash.callback_context
 
-    dash_sinadef_graph = html.Div(
-        html.Div([
-            html.Div(graph_bar_title, className="chart-title"),
-            dcc.Graph(
-                id='my-graph',
-                figure=fig,
-                config={
-                    'displayModeBar': False,
-                }
-            ),
+    if not ctx.triggered or not any(args):
+        return ["nav-link" for _ in range(1, 4)]
 
-            ] ,className="card-body"),
-        className="card my-1",
-    )
+    # get id of triggering button
+    button_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
-    navbar = Navbar("SINADEF", rpDate, app)
-    indicators = Indicators(exdat_text, exdef, exdef_percent)
-    return html.Div([
-        navbar,
-        indicators,
-        dash_sinadef_graph,
-    ], className='content')
+    return [
+        "nav-link active" if button_id == f"nav-link-{i}" else "nav-link" for i in range(1, 4)
+    ]
 
-app.title = 'SINADEF'
-app.layout = serve_layout
+
+
+
 
 if __name__ == '__main__':
     app.run_server(debug=True)
