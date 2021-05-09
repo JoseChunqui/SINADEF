@@ -18,18 +18,18 @@ locale.setlocale(locale.LC_TIME, 'es_pe')
 
 external_scripts = [
         "https://code.jquery.com/jquery-3.3.1.slim.min.js",
-        "https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+        "https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/js/bootstrap.bundle.min.js"
         ]
 
 external_stylesheets = [
-        "https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css",
+        "https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/css/bootstrap.min.css",
         "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css"
         ]
 app = dash.Dash(
     __name__,
     requests_pathname_prefix= "/" if (__name__ == '__main__') else '/wsgi/',
-    external_scripts = external_scripts,
     external_stylesheets = external_stylesheets,
+    external_scripts = external_scripts,
     meta_tags=[
         {"name": "viewport", "content": "width=device-width, initial-scale=1"}
     ]
@@ -75,31 +75,29 @@ def serve_layout():
 app.title = 'SINADEF'
 app.layout = serve_layout
 
-
-
-
 @app.callback(
     Output('sinadef_graph', 'figure'),
-    Input("nav-link-1", "n_clicks"),
-    Input("nav-link-2", "n_clicks"),
-    Input("nav-link-3", "n_clicks")
+    [Input(f"nav-link-{i}", "n_clicks") for i in range(1, 4)],
+    [dash.dependencies.Input('deps-dropdown', 'value')]
 )
-def update_figure(nl1,nl2,nl3):
+def update_figure(*args):
     ctx = dash.callback_context
 
     if not ctx.triggered:
         button_id = 'No clicks yet'
+        value_id = ''
     else:
         button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+        value_id = ctx.triggered[0]['value']
 
-    print(button_id)
+    print(value_id)
 
     global rpDate
     global exdat_text
     global exdef
     global exdef_percent
 
-    data_file = os.path.join(os.path.dirname('__file__'), 'data/sinadef.csv')
+    data_file = os.path.join(os.path.dirname('__file__'), 'data/sinadefv2.csv')
     df = pandas.read_csv(data_file)
     df = df[df['IDX'] != 229].reset_index(drop=True)
 
@@ -112,6 +110,9 @@ def update_figure(nl1,nl2,nl3):
     if( button_id == 'nav-link-3' ):
         df = df[(df['DEPARTAMENTO'] != 'LIMA') | (df['DEPARTAMENTO'].isnull())]
         df = df.groupby(['NFECHA', 'IDX', 'TheYear', 'TheDate']).agg({'CANT': "sum"}).reset_index().replace({'CANT':{0: np.nan}}).sort_values('TheDate', ascending=True)
+
+    if( button_id == 'deps-dropdown' ):
+        df = df[(df['DEPARTAMENTO'] == value_id) | (df['DEPARTAMENTO'].isnull())].sort_values('TheDate', ascending=True)
 
     df['moving'] = df['CANT'].transform(lambda x: x.rolling(7, 7).mean())
     df.moving.fillna(df['CANT'], inplace=True)
@@ -243,22 +244,33 @@ def update_figure(nl1,nl2,nl3):
 @app.callback(
     [Output(f"nav-link-{i}", "className") for i in range(1, 4)],
     [Input(f"nav-link-{i}", "n_clicks") for i in range(1, 4)],
+    [dash.dependencies.Input('deps-dropdown', 'value')]
 )
 def set_active(*args):
     ctx = dash.callback_context
 
     if not ctx.triggered or not any(args):
-        return ["nav-link" for _ in range(1, 4)]
+        return ["nav-link active" if i == 1 else "nav-link" for i in range(1, 4)]
 
     # get id of triggering button
     button_id = ctx.triggered[0]["prop_id"].split(".")[0]
+
+    if(button_id =='deps-dropdown'):
+        if(ctx.triggered[0]["value"] == None):
+            return ["nav-link active" if i == 1 else "nav-link" for i in range(1, 4)]
+        else:
+            return ["nav-link" for _ in range(1, 4)]
 
     return [
         "nav-link active" if button_id == f"nav-link-{i}" else "nav-link" for i in range(1, 4)
     ]
 
-
-
+@app.callback(
+    Output("deps-dropdown", "value"),
+    [Input(f"nav-link-{i}", "n_clicks") for i in range(1, 4)],
+)
+def set_active(*args):
+    return ''
 
 
 if __name__ == '__main__':

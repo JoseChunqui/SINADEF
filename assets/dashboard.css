@@ -65,9 +65,9 @@
     background-color: #97b5cf !important;
 }
 
-.navbar{
+/* .navbar{
   min-height: 50px;
-}
+} */
 
 p {
     margin: 0 0 10.5px;
@@ -100,7 +100,7 @@ body {
     border-color: #ffffff;
     box-shadow: 2px 0 8px 0 rgba(0, 0, 0, 0.15);
 }
-/* 
+/*
 .nav-item.active
 {
     font-weight: 600;
