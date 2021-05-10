@@ -18,10 +18,10 @@ def Indicators(exPeriod, exdef, exdef_percent):
                                         'aria-hidden':"true"
                                     }
                                 ),
-                            ], className="icon d-none d-lg-block "),
+                            ], className="icon d-none d-lg-block"),
                         ], className="card-box bg-dashboard")
         content_card_col = html.Div(content_card, className="col-xl-4 col-12")
         cards.append(content_card_col)
         iterator = iterator + 1
 
-    return html.Div(cards, className="row no-gutters")
+    return html.Div(cards, className="row no-gutters my-2 mx-4")

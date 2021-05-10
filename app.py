@@ -47,19 +47,23 @@ exdef_percent = ''
 
 def serve_layout():
 
-    graph_bar_title = html.Div(html.Span("Mortalidad por todas las causas. Perú"), className="col-8")
+    graph_bar_title = html.Div(html.Span("Mortalidad por todas las causas. Perú", id="sinadef_graph-title"), className="col-8")
 
     dash_sinadef_graph = html.Div(
         html.Div([
-
             html.Div(graph_bar_title, className="chart-title"),
-            dcc.Graph(
-                id='sinadef_graph',
-                config={
-                    'displayModeBar': False,
-                }
-            ),
+            dcc.Loading(
+                id="loading-1",
+                type="default",
+                children=dcc.Graph(
+                        id='sinadef_graph',
+                        config={
+                            'displayModeBar': False,
+                        },
+                        className='mx-4 mt-5'
+                    ),
 
+            ),
             ] ,className="card-body", id="my-div"),
         className="card my-1",
     )
@@ -68,7 +72,7 @@ def serve_layout():
     indicators = Indicators(exdat_text, exdef, exdef_percent)
     return html.Div([
         navbar,
-        # indicators,
+        indicators,
         dash_sinadef_graph,
     ], className='content', id="ServeLayout")
 
@@ -77,42 +81,41 @@ app.layout = serve_layout
 
 @app.callback(
     Output('sinadef_graph', 'figure'),
+    [Output(f"indicator-{i}", "children") for i in range(1, 4)],
+    Output('rp-date', 'children'),
+    Output('sinadef_graph-title', 'children'),
     [Input(f"nav-link-{i}", "n_clicks") for i in range(1, 4)],
     [dash.dependencies.Input('deps-dropdown', 'value')]
 )
 def update_figure(*args):
     ctx = dash.callback_context
 
+    value_id = 'Nacional'
+    st_title = 'Mortalidad por todas las causas. '
+    dm_title = 'Perú'
     if not ctx.triggered:
         button_id = 'No clicks yet'
-        value_id = ''
     else:
         button_id = ctx.triggered[0]['prop_id'].split('.')[0]
         value_id = ctx.triggered[0]['value']
-
-    print(value_id)
-
-    global rpDate
-    global exdat_text
-    global exdef
-    global exdef_percent
 
     data_file = os.path.join(os.path.dirname('__file__'), 'data/sinadefv2.csv')
     df = pandas.read_csv(data_file)
     df = df[df['IDX'] != 229].reset_index(drop=True)
 
-    if(button_id == 'nav-link-1' or button_id == 'No clicks yet'):
-        df = df.groupby(['NFECHA', 'IDX', 'TheYear', 'TheDate']).agg({'CANT': "sum"}).reset_index().replace({'CANT':{0: np.nan}}).sort_values('TheDate', ascending=True)
-
-    if( button_id == 'nav-link-2' ):
-        df = df[(df['DEPARTAMENTO'] == 'LIMA') | (df['DEPARTAMENTO'].isnull())].sort_values('TheDate', ascending=True)
-
-    if( button_id == 'nav-link-3' ):
+    if button_id == 'nav-link-2':
+        df = df[(df['DEPARTAMENTO'] == 'LIMA') | (df['DEPARTAMENTO'].isnull())].sort_values('TheDate', ascending=True).reset_index()
+        dm_title = 'LIMA'
+    elif button_id == 'nav-link-3':
         df = df[(df['DEPARTAMENTO'] != 'LIMA') | (df['DEPARTAMENTO'].isnull())]
         df = df.groupby(['NFECHA', 'IDX', 'TheYear', 'TheDate']).agg({'CANT': "sum"}).reset_index().replace({'CANT':{0: np.nan}}).sort_values('TheDate', ascending=True)
+        dm_title = 'PROVINCIAS'
+    elif button_id == 'deps-dropdown' and value_id != None and value_id != '':
+        df = df[(df['DEPARTAMENTO'] == value_id) | (df['DEPARTAMENTO'].isnull())].sort_values('TheDate', ascending=True).reset_index()
+        dm_title = value_id
+    else:
+        df = df.groupby(['NFECHA', 'IDX', 'TheYear', 'TheDate']).agg({'CANT': "sum"}).reset_index().replace({'CANT':{0: np.nan}}).sort_values('TheDate', ascending=True)
 
-    if( button_id == 'deps-dropdown' ):
-        df = df[(df['DEPARTAMENTO'] == value_id) | (df['DEPARTAMENTO'].isnull())].sort_values('TheDate', ascending=True)
 
     df['moving'] = df['CANT'].transform(lambda x: x.rolling(7, 7).mean())
     df.moving.fillna(df['CANT'], inplace=True)
@@ -205,19 +208,19 @@ def update_figure(*args):
             yaxis=go.layout.YAxis(title="Defunciones")
         ))
 
-    fig.add_trace(go.Scatter(x=df_cmax["fecha"].unique(), y=df_cmax['CANT'],
+    fig.add_trace(go.Scatter(x=df_cmax["fecha"], y=df_cmax['CANT'],
                         line = dict(color='rgba(176,182,188,1)', width=1),
                         name='Esperadas M'))
-    fig.add_trace(go.Scatter(x=df_cmin["fecha"].unique(), y=df_cmin['CANT'],
+    fig.add_trace(go.Scatter(x=df_cmin["fecha"], y=df_cmin['CANT'],
                         line = dict(color='rgba(176,182,188,1)', width=1), fill='tonexty', fillcolor='rgba(185,207,228,1)',
                         name='Esperadas m'))
     fig.add_trace(go.Scatter(x=df_cmean["fecha"], y=df_cmean['CANT'],
                         line = dict(color='rgba(22,96,167,1)', width=2), fill='tonexty', fillcolor='rgba(185,207,228,1)',
                         name='Esperadas'))
-    fig.add_trace(go.Scatter(x=df_cd_wk["fecha"].unique(), y=df_cd_wk['CANT'],
+    fig.add_trace(go.Scatter(x=df_cd_wk["fecha"], y=df_cd_wk['CANT'],
                         line = dict(color='blue', width=1, dash='dot'),
                         name='Observadas'))
-    fig.add_trace(go.Scatter(x=df_cd_wk["fecha"].unique(), y=df_cd_wk['moving'],
+    fig.add_trace(go.Scatter(x=df_cd_wk["fecha"], y=df_cd_wk['moving'],
                         line = dict(color='black', width=3),
                         name='Media Móvil'))
 
@@ -239,7 +242,7 @@ def update_figure(*args):
     )
     fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='rgba(238,238,238,1)')
     fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(238,238,238,1)')
-    return fig
+    return fig, exdat_text, exdef, exdef_percent, "Actualizado el "+ rpDate, st_title + dm_title
 
 @app.callback(
     [Output(f"nav-link-{i}", "className") for i in range(1, 4)],
@@ -255,15 +258,13 @@ def set_active(*args):
     # get id of triggering button
     button_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
-    if(button_id =='deps-dropdown'):
+    if(button_id == 'deps-dropdown'):
         if(ctx.triggered[0]["value"] == None):
             return ["nav-link active" if i == 1 else "nav-link" for i in range(1, 4)]
         else:
             return ["nav-link" for _ in range(1, 4)]
 
-    return [
-        "nav-link active" if button_id == f"nav-link-{i}" else "nav-link" for i in range(1, 4)
-    ]
+    return [ "nav-link active" if button_id == f"nav-link-{i}" else "nav-link" for i in range(1, 4) ]
 
 @app.callback(
     Output("deps-dropdown", "value"),
@@ -271,7 +272,6 @@ def set_active(*args):
 )
 def set_active(*args):
     return ''
-
 
 if __name__ == '__main__':
     app.run_server(debug=True)
