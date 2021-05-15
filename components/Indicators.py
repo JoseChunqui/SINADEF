@@ -24,4 +24,4 @@ def Indicators(exPeriod, exdef, exdef_percent):
         cards.append(content_card_col)
         iterator = iterator + 1
 
-    return html.Div(cards, className="row no-gutters my-2 mx-4")
+    return html.Div(cards, className="row no-gutters my-2")

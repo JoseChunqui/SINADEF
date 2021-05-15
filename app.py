@@ -40,10 +40,10 @@ server = app.server
 stYears = [2017,2018,2019];
 
 #indicators
-rpDate = ''
-exdat_text = ''
-exdef = ''
-exdef_percent = ''
+rpDate = '-'
+exdat_text = '-'
+exdef = '-'
+exdef_percent = '-'
 
 def serve_layout():
 
@@ -56,16 +56,17 @@ def serve_layout():
                 id="loading-1",
                 type="default",
                 children=dcc.Graph(
+                        style={"height": "100%"},
                         id='sinadef_graph',
                         config={
                             'displayModeBar': False,
                         },
-                        className='mx-4 mt-5'
+                        className='mt-5'
                     ),
 
             ),
             ] ,className="card-body", id="my-div"),
-        className="card my-1",
+        className="card",
     )
 
     navbar = Navbar("SINADEF", rpDate, app)
@@ -74,7 +75,7 @@ def serve_layout():
         navbar,
         indicators,
         dash_sinadef_graph,
-    ], className='content', id="ServeLayout")
+    ], className='container-fluid', id="ServeLayout")
 
 app.title = 'SINADEF'
 app.layout = serve_layout
@@ -231,7 +232,7 @@ def update_figure(*args):
         height=600,
         margin=dict(
             l=0,
-            r=10,
+            r=0,
             b=0,
             t=20,
             pad=0
@@ -242,7 +243,7 @@ def update_figure(*args):
     )
     fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='rgba(238,238,238,1)')
     fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(238,238,238,1)')
-    return fig, exdat_text, exdef, exdef_percent, "Actualizado el "+ rpDate, st_title + dm_title
+    return fig, exdat_text, '{:,.0f}'.format(exdef), exdef_percent, "Actualizado el "+ rpDate, st_title + dm_title
 
 @app.callback(
     [Output(f"nav-link-{i}", "className") for i in range(1, 4)],

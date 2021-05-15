@@ -65,15 +65,17 @@ def Navbar(title, rpDate, app):
                             dcc.Dropdown(
                                 id='deps-dropdown',
                                 options=[ {'label': x , 'value': x } for x in deps ],
-                                style={'width': '200px',  'display': 'inline-block'}
+                                style={'width': '210px',  'display': 'inline-block'},
+                                searchable=False,
+                                placeholder="Seleccionar"
                             ),
-                        ], style={"width": "100%"},)
+                        ], style={"width": "100%"}, className="ps-3")
                     ], className='nav-item'),
 
 
                 ], className='navbar-nav me-auto mb-2 mb-lg-0'),
                 html.Span([
-                    html.Span(className="fa fa-calendar-alt justify-content-center mr-3"),
+                    html.Span(className="fa fa-calendar-alt justify-content-center me-2"),
                     html.Span("Actualizado el "+ rpDate, id="rp-date")
                 ], className="navbar-text")
             ], id="navbarText", className='collapse navbar-collapse'),

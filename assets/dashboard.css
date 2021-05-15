@@ -2,7 +2,6 @@
   border-radius: 2px;
   position: relative;
   display: block;
-  margin-right: 8px;
   margin-bottom: 8px;
   box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
   color: #f9f9f9;
@@ -22,7 +21,7 @@
   padding: 15px 15px 15px 15px;
 }
 .card-box .value {
-  font-size: 36px;
+  font-size: 30px;
   font-weight: bold;
   margin: 0 0 3px 0;
   white-space: nowrap;
@@ -35,7 +34,7 @@
     position: absolute;
     top: 15px;
     right: 15px;
-    font-size: 80px;
+    font-size: 70px;
     color: rgba(0, 0, 0, 0.15);
 }
 .card-box .card-box-footer {
@@ -69,14 +68,15 @@
   min-height: 50px;
 } */
 
-p {
+/* p {
     margin: 0 0 10.5px;
-}
+} */
 
 body {
     font-family: 'Rubik', sans-serif;
     font-size: 14px;
     line-height: 1.14;
+
 }
 
 
@@ -92,7 +92,8 @@ body {
     background-origin: initial;
     background-clip: initial;
     background-color: rgb(242, 242, 242);
-    padding: 60px 0 0 8px;
+    padding: 60px 0 0 0px;
+    max-width: 100%;
 }
 
 .navbar-inverse {
