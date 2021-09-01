@@ -52,13 +52,13 @@ def Navbar(title, rpDate, app):
             html.Div([
                 html.Ul([
                     html.Li([
-                        html.A("Nacional", href="#", className = "nav-link active", id="nav-link-1")
+                        html.Button("Nacional", className = "btn btn-link shadow-none nav-link active", id="nav-link-1")
                     ], className='nav-item active'),
                     html.Li([
-                        html.A("Lima", href="#", className = "nav-link", id="nav-link-2")
+                        html.Button("Lima", className = "btn btn-link shadow-none nav-link", id="nav-link-2")
                     ], className='nav-item'),
                     html.Li([
-                        html.A("Provincias", href="#", className = "nav-link", id="nav-link-3")
+                        html.Button("Provincias", className = "btn btn-link shadow-none nav-link", id="nav-link-3")
                     ], className='nav-item'),
                     html.Li([
                         html.Div([

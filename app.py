@@ -13,6 +13,8 @@ import numpy as np
 # from fbprophet import Prophet
 import os
 from components import Navbar, Indicators
+from dash.exceptions import PreventUpdate
+
 
 locale.setlocale(locale.LC_TIME, 'es_pe')
 
@@ -45,8 +47,36 @@ exdat_text = '-'
 exdef = '-'
 exdef_percent = '-'
 
-def serve_layout():
+def vaccinations_layout():
+    graph_bar_title = html.Div(html.Span("Vacunación diaria. Perú", id="vaccinations_graph-title"), className="col-8")
 
+    dash_vaccinations_graph = html.Div(
+        html.Div([
+            html.Div(graph_bar_title, className="chart-title"),
+            dcc.Loading(
+                id="loading-1",
+                type="default",
+                children=dcc.Graph(
+                        style={"height": "100%"},
+                        id='vaccinations_graph',
+                        config={
+                            'displayModeBar': False,
+                        },
+                        className='mt-5'
+                    ),
+
+            ),
+            ] ,className="card-body", id="my-div"),
+        className="card",
+    )
+
+    navbar = Navbar("VACUNACIÓN", rpDate, app)
+    return html.Div([
+        navbar,
+        dash_vaccinations_graph,
+    ], className='container-fluid', id="ServeLayout")
+
+def sinadef_layout():
     graph_bar_title = html.Div(html.Span("Mortalidad por todas las causas. Perú", id="sinadef_graph-title"), className="col-8")
 
     dash_sinadef_graph = html.Div(
@@ -76,9 +106,6 @@ def serve_layout():
         indicators,
         dash_sinadef_graph,
     ], className='container-fluid', id="ServeLayout")
-
-app.title = 'SINADEF'
-app.layout = serve_layout
 
 @app.callback(
     Output('sinadef_graph', 'figure'),
@@ -124,7 +151,6 @@ def update_figure(*args):
 
     maxDate = max(df.loc[~np.isnan(df['CANT'])]['TheDate'])
     maxDate = datetime.datetime.strptime(maxDate,"%Y-%m-%d")
-    date_current = maxDate.month * 100 + maxDate.day
     rpDate = ( maxDate + datetime.timedelta(days=2)).strftime('%Y-%m-%d')
 
     df_cd = df[~df['TheYear'].isin(stYears)].copy()
@@ -246,6 +272,89 @@ def update_figure(*args):
     return fig, exdat_text, '{:,.0f}'.format(exdef), exdef_percent, "Actualizado el "+ rpDate, st_title + dm_title
 
 @app.callback(
+    Output('vaccinations_graph', 'figure'),
+    Output('rp-date', 'children'),
+    Output('vaccinations_graph-title', 'children'),
+    [Input(f"nav-link-{i}", "n_clicks") for i in range(1, 4)],
+    [dash.dependencies.Input('deps-dropdown', 'value')]
+)
+def update_vaccinations_figure(*args):
+    ctx = dash.callback_context
+
+    value_id = 'Nacional'
+    st_title = 'Vacunación diaria. '
+    dm_title = 'Perú'
+    if not ctx.triggered:
+        button_id = 'No clicks yet'
+    else:
+        button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+        value_id = ctx.triggered[0]['value']
+
+    data_file = os.path.join(os.path.dirname('__file__'), 'data/vacunas.csv')
+    df = pandas.read_csv(data_file)
+
+    df['TheYear'] = [ datetime.datetime.strptime(str(x), '%Y%m%d').strftime('%y') for x in df['FECHA_VACUNACION'] ]
+    df['TheMonth'] = [ datetime.datetime.strptime(str(x), '%Y%m%d').strftime('%m') for x in df['FECHA_VACUNACION'] ]
+    df['TheMonthName'] = [ {'01':'Ene','02':'Feb','03':'Mar','04':'Abr','05':'May','06':'Jun','07':'Jul','08':'Ago','09':'Set','10':'Oct','11':'Nov','12':'Dic'}[x] for x in df['TheMonth'] ]
+    df['TheDay'] = [ datetime.datetime.strptime(str(x), '%Y%m%d').strftime('%d') for x in df['FECHA_VACUNACION'] ]
+    df['TheDate'] = [ datetime.datetime.strptime(str(x), '%Y%m%d').strftime('%Y-%m-%d') for x in df['FECHA_VACUNACION'] ]
+    df['Fecha'] = df['TheDay'] + ' ' + df['TheMonthName'] + ' ' +  df['TheYear']
+
+    if button_id == 'nav-link-2':
+        df = df[(df['DEPARTAMENTO'] == 'LIMA') | (df['DEPARTAMENTO'].isnull())].sort_values('TheDate', ascending=True).reset_index()
+        dm_title = 'LIMA'
+    elif button_id == 'nav-link-3':
+        df = df[(df['DEPARTAMENTO'] != 'LIMA') | (df['DEPARTAMENTO'].isnull())]
+        dm_title = 'PROVINCIAS'
+    elif button_id == 'deps-dropdown' and value_id != None and value_id != '':
+        df = df[(df['DEPARTAMENTO'] == value_id) | (df['DEPARTAMENTO'].isnull())].sort_values('TheDate', ascending=True).reset_index()
+        dm_title = value_id
+
+    df = df.groupby(['Fecha','TheDate']).agg({'CANT': "sum"}).reset_index().replace({'CANT':{0: np.nan}}).sort_values('TheDate', ascending=True)
+    df['CANT'] = df['CANT'] / 1000
+    df.round({'CANT': 1})
+
+    df['moving'] = df['CANT'].transform(lambda x: x.rolling(15, 15).mean())
+    df.moving.fillna(df['CANT'], inplace=True)
+
+    maxDate = max(df.loc[~np.isnan(df['CANT'])]['TheDate'])
+    maxDate = datetime.datetime.strptime(maxDate,"%Y-%m-%d")
+    rpDate = ( maxDate + datetime.timedelta(days=2)).strftime('%Y-%m-%d')
+
+    fig = go.Figure(layout=go.Layout(
+            xaxis=go.layout.XAxis(title="Fecha"),
+            yaxis=go.layout.YAxis(title="Vacunacion")
+        ))
+
+    fig.add_trace(go.Scatter(x=df["Fecha"], y=df['CANT'],
+                        line = dict(color='blue', width=1, dash='dot'),
+                        name='Observadas'))
+    fig.add_trace(go.Scatter(x=df["Fecha"], y=df['moving'],
+                        line = dict(color='black', width=3),
+                        name='Media Móvil'))
+
+
+    fig.update(layout_showlegend=False)
+    fig.update_layout(
+        autosize=True,
+        height=1000,
+        margin=dict(
+            l=0,
+            r=0,
+            b=0,
+            t=20,
+            pad=0
+        ),
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        hovermode="x"
+    )
+    fig.update_layout(yaxis_range=[0,500])
+    fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='rgba(238,238,238,1)')
+    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(238,238,238,1)')
+    return fig, "Actualizado el "+ rpDate, st_title + dm_title
+
+@app.callback(
     [Output(f"nav-link-{i}", "className") for i in range(1, 4)],
     [Input(f"nav-link-{i}", "n_clicks") for i in range(1, 4)],
     [dash.dependencies.Input('deps-dropdown', 'value')]
@@ -258,21 +367,33 @@ def set_active(*args):
 
     # get id of triggering button
     button_id = ctx.triggered[0]["prop_id"].split(".")[0]
-
+    print(button_id)
     if(button_id == 'deps-dropdown'):
         if(ctx.triggered[0]["value"] == None):
-            return ["nav-link active" if i == 1 else "nav-link" for i in range(1, 4)]
+            return ["btn btn-link shadow-none nav-link active" if i == 1 else "btn btn-link shadow-none nav-link" for i in range(1, 4)]
         else:
-            return ["nav-link" for _ in range(1, 4)]
+            return ["btn btn-link shadow-none nav-link" for _ in range(1, 4)]
 
-    return [ "nav-link active" if button_id == f"nav-link-{i}" else "nav-link" for i in range(1, 4) ]
+    return [ "btn btn-link shadow-none nav-link active" if button_id == f"nav-link-{i}" else "btn btn-link shadow-none nav-link" for i in range(1, 4) ]
 
-@app.callback(
-    Output("deps-dropdown", "value"),
-    [Input(f"nav-link-{i}", "n_clicks") for i in range(1, 4)],
-)
-def set_active(*args):
-    return ''
+app.title = 'SINADEF'
+app.layout = html.Div([
+    # represents the URL bar, doesn't render anything
+    dcc.Location(id='url', refresh=False),
+
+    # content will be rendered in this element
+    html.Div(id='page-content')
+])
+
+@app.callback(dash.dependencies.Output('page-content', 'children'),
+              dash.dependencies.Output("nav-link-1", "n_clicks"),
+              [dash.dependencies.Input('url', 'pathname')])
+def display_page(pathname):
+    print(pathname)
+    if (pathname == '/vacunacion'):
+        return vaccinations_layout(),1
+    else:
+        return sinadef_layout(),1
 
 if __name__ == '__main__':
     app.run_server(debug=True)
